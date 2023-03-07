@@ -29,7 +29,7 @@ public class TrayApplicationContext : ApplicationContext
     private string _networkAddress;
     private string _executableFile;
     private string _dataFolder = @"C:\ProgramData\Jellyfin\Server";
-    private string _localJellyfinUrl = "http://localhost:8096/web/index.html";
+    private string _localJellyfinUrl = "http://127.0.0.1:8096/web/index.html";
     private NotifyIcon _trayIcon;
     private ServiceController _serviceController;
     private ToolStripMenuItem _menuItemAutostart;
@@ -173,7 +173,7 @@ public class TrayApplicationContext : ApplicationContext
 
         if (string.IsNullOrEmpty(_networkAddress))
         {
-            _networkAddress = "localhost";
+            _networkAddress = "127.0.0.1";
         }
 
         _localJellyfinUrl = "http://" + _networkAddress + ":" + _port + "/web/index.html";
