@@ -268,10 +268,16 @@ public class TrayApplicationContext : ApplicationContext
         else if (_jellyfinProcess is null)
         {
             ConsoleHelpers.SetConsoleCtrlHandler(IntPtr.Zero, false); // make sure IGNORE_CTRL_C is not set in this process to stop it from being inherited by the below
-            Process p = new Process();
+            var p = new Process2();
             p.StartInfo.FileName = _executableFile;
             p.StartInfo.WorkingDirectory = _installFolder;
+            p.StartInfo.UseShellExecute = false;
             p.StartInfo.CreateNoWindow = true;
+            if (p.StartInfo.CreateNoWindow)
+            {
+                p.StartInfo.RedirectStandardOutput = true;
+                p.StartInfo.RedirectStandardError = true;
+            }
             p.StartInfo.Arguments = "--datadir \"" + _dataFolder + "\"";
             p.EnableRaisingEvents = true;
             p.Exited += JellyfinExited;

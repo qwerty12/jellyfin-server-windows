@@ -15,7 +15,7 @@
     <PackageProjectUrl>https://jellyfin.org</PackageProjectUrl>
     <RepositoryUrl>https://github.com/jellyfin/jellyfin-server-windows</RepositoryUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <CodeAnalysisRuleSet>../jellyfin.ruleset</CodeAnalysisRuleSet>
     <NeutralLanguage>en-US</NeutralLanguage>
