@@ -40,6 +40,7 @@ public class TrayApplicationContext : ApplicationContext
     private ToolStripMenuItem _menuItemExit;
     private string _installFolder;
     private RunType _runType;
+    private Process _jellyfinProcess;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TrayApplicationContext"/> class.
@@ -83,18 +84,20 @@ public class TrayApplicationContext : ApplicationContext
         if (_runType == RunType.Executable)
         {
             // check if Jellyfin is already running, if not, start it
-            bool jellyfinFound = false;
             foreach (Process p in Process.GetProcessesByName("jellyfin"))
             {
-                if (!jellyfinFound && p.MainModule?.FileName.Equals(_executableFile, StringComparison.Ordinal) == true)
+                if (_jellyfinProcess is null && p.MainModule?.FileName.Equals(_executableFile, StringComparison.Ordinal) == true)
                 {
-                    jellyfinFound = true;
+                    _jellyfinProcess = p;
+                    _jellyfinProcess.EnableRaisingEvents = true;
+                    _jellyfinProcess.Exited += JellyfinExited;
+                    continue;
                 }
 
                 p.Dispose();
             }
 
-            if (!jellyfinFound)
+            if (_jellyfinProcess is null)
             {
                 Start(null, null);
             }
@@ -120,6 +123,15 @@ public class TrayApplicationContext : ApplicationContext
             {
                 key.DeleteValue(_autostartKey);
             }
+        }
+    }
+
+    private void JellyfinExited(object sender, EventArgs e)
+    {
+        if (_jellyfinProcess is not null)
+        {
+            _jellyfinProcess.Dispose();
+            _jellyfinProcess = null;
         }
     }
 
@@ -231,7 +243,7 @@ public class TrayApplicationContext : ApplicationContext
         }
         else
         {
-            exeRunning = Process.GetProcessesByName("jellyfin").Length > 0;
+            exeRunning = _jellyfinProcess is not null;
         }
 
         bool running = (!runningAsService && exeRunning) || (runningAsService && _serviceController.Status == ServiceControllerStatus.Running);
@@ -253,14 +265,19 @@ public class TrayApplicationContext : ApplicationContext
 
             _serviceController.Start();
         }
-        else
+        else if (_jellyfinProcess is null)
         {
             Process p = new Process();
             p.StartInfo.FileName = _executableFile;
             p.StartInfo.WorkingDirectory = _installFolder;
             p.StartInfo.CreateNoWindow = true;
             p.StartInfo.Arguments = "--datadir \"" + _dataFolder + "\"";
-            p.Start();
+            p.EnableRaisingEvents = true;
+            p.Exited += JellyfinExited;
+            if (p.Start())
+            {
+                _jellyfinProcess = p;
+            }
         }
     }
 
@@ -275,17 +292,11 @@ public class TrayApplicationContext : ApplicationContext
 
             _serviceController.Stop();
         }
-        else
+        else if (_jellyfinProcess is not null)
         {
-            Process process = Process.GetProcessesByName("jellyfin").FirstOrDefault();
-            if (process == null)
+            if (!_jellyfinProcess.CloseMainWindow())
             {
-                return;
-            }
-
-            if (!process.CloseMainWindow())
-            {
-                process.Kill();
+                _jellyfinProcess.Kill();
             }
         }
     }
