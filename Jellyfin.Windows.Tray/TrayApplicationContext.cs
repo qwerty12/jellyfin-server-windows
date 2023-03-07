@@ -202,12 +202,12 @@ public class TrayApplicationContext : ApplicationContext
 
     private void Open(object sender, EventArgs e)
     {
-        Process.Start("explorer.exe", _localJellyfinUrl);
+        Process.Start(new ProcessStartInfo(_localJellyfinUrl) { UseShellExecute = true });
     }
 
     private void ShowLogs(object sender, EventArgs e)
     {
-        Process.Start("explorer.exe", _dataFolder + "\\log");
+        Process.Start(new ProcessStartInfo(_dataFolder + "\\log") { UseShellExecute = true });
     }
 
     private void ContextMenuOnPopup(object sender, EventArgs e)
