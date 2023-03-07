@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Principal;
 using System.ServiceProcess;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml.Linq;
 using System.Xml.XPath;
@@ -307,6 +308,34 @@ public class TrayApplicationContext : ApplicationContext
                 ConsoleHelpers.GenerateConsoleCtrlEvent(ConsoleHelpers.HandlerRoutineCtrls.CTRL_C_EVENT, 0);
                 ConsoleHelpers.FreeConsole();
             }
+
+            if (sender == null && e == null)
+            {
+                return;
+            }
+
+            if (_jellyfinProcess.WaitForExit(100))
+            {
+                return;
+            }
+
+            Process state = _jellyfinProcess;
+            Task.Delay(10000).ContinueWith(_ =>
+                {
+                    if (_jellyfinProcess == null || _jellyfinProcess != state)
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        state.Kill();
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                });
         }
     }
 
