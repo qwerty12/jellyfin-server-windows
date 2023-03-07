@@ -47,7 +47,6 @@ public class TrayApplicationContext : ApplicationContext
     public TrayApplicationContext()
     {
         _serviceController = ServiceController.GetServices().FirstOrDefault(s => s.ServiceName == _jellyfinServiceName);
-        RegistryKey registryKey = Registry.LocalMachine.OpenSubKey("Software\\WOW6432Node\\Jellyfin\\Server");
         if (_serviceController != null)
         {
             _runType = RunType.Service;
