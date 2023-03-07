@@ -233,13 +233,13 @@ public class TrayApplicationContext : ApplicationContext
 
     private void Start(object sender, EventArgs e)
     {
-        if (CheckShowServiceNotElevatedWarning())
-        {
-            return;
-        }
-
         if (_runType == RunType.Service)
         {
+            if (CheckShowServiceNotElevatedWarning())
+            {
+                return;
+            }
+
             _serviceController.Start();
         }
         else
@@ -255,13 +255,13 @@ public class TrayApplicationContext : ApplicationContext
 
     private void Stop(object sender, EventArgs e)
     {
-        if (CheckShowServiceNotElevatedWarning())
-        {
-            return;
-        }
-
         if (_runType == RunType.Service)
         {
+            if (CheckShowServiceNotElevatedWarning())
+            {
+                return;
+            }
+
             _serviceController.Stop();
         }
         else
