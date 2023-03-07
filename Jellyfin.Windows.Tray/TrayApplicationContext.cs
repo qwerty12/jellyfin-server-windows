@@ -42,6 +42,7 @@ public class TrayApplicationContext : ApplicationContext
     private string _installFolder;
     private RunType _runType;
     private Process _jellyfinProcess;
+    private ShutdownBlocker _shutdownBlocker;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TrayApplicationContext"/> class.
@@ -134,6 +135,11 @@ public class TrayApplicationContext : ApplicationContext
             _jellyfinProcess.Dispose();
             _jellyfinProcess = null;
         }
+
+        if (_shutdownBlocker is not null)
+        {
+            _shutdownBlocker.Block = false;
+        }
     }
 
     private void CreateTrayIcon()
@@ -161,6 +167,15 @@ public class TrayApplicationContext : ApplicationContext
         using var iconStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(TrayIconResourceName);
         _trayIcon = new NotifyIcon() { Icon = new Icon(iconStream), ContextMenuStrip = contextMenu, Visible = true, Text = "Jellyfin" };
         _trayIcon.DoubleClick += Open;
+
+        if (_runType == RunType.Executable)
+        {
+            _shutdownBlocker = new ShutdownBlocker(_trayIcon, () =>
+            {
+                Stop(null, null);
+                _jellyfinProcess.WaitForExit(10000);
+            }) { BlockMsg = "Waiting for Jellyfin to exit" };
+        }
     }
 
     private void LoadJellyfinConfig()
@@ -285,6 +300,10 @@ public class TrayApplicationContext : ApplicationContext
             if (p.Start())
             {
                 _jellyfinProcess = p;
+                if (_shutdownBlocker is not null)
+                {
+                    _shutdownBlocker.Block = true;
+                }
             }
         }
     }
