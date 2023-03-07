@@ -83,7 +83,18 @@ public class TrayApplicationContext : ApplicationContext
         if (_runType == RunType.Executable)
         {
             // check if Jellyfin is already running, if not, start it
-            if (Process.GetProcessesByName("jellyfin").Length == 0)
+            bool jellyfinFound = false;
+            foreach (Process p in Process.GetProcessesByName("jellyfin"))
+            {
+                if (!jellyfinFound && p.MainModule?.FileName.Equals(_executableFile, StringComparison.Ordinal) == true)
+                {
+                    jellyfinFound = true;
+                }
+
+                p.Dispose();
+            }
+
+            if (!jellyfinFound)
             {
                 Start(null, null);
             }
