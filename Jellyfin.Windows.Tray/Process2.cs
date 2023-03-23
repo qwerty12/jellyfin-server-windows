@@ -237,7 +237,7 @@ internal sealed class Process2 : Process
     private static readonly MethodInfo SetProcessId = ProcessType.GetMethod("SetProcessId", BindingFlags.Instance | BindingFlags.NonPublic);
     private bool disposed;
 
-    public bool Start()
+    public new bool Start()
     {
         Close();
 

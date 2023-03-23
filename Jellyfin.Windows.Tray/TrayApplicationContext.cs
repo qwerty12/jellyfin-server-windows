@@ -43,6 +43,8 @@ public class TrayApplicationContext : ApplicationContext
     private RunType _runType;
     private Process _jellyfinProcess;
     private ShutdownBlocker _shutdownBlocker;
+    private DateTime _jellyfinStartTime;
+    private bool _skipCrashRestart;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TrayApplicationContext"/> class.
@@ -91,6 +93,7 @@ public class TrayApplicationContext : ApplicationContext
                 if (_jellyfinProcess is null && p.MainModule?.FileName.Equals(_executableFile, StringComparison.Ordinal) == true)
                 {
                     _jellyfinProcess = p;
+                    _jellyfinStartTime = p.StartTime;
                     _jellyfinProcess.EnableRaisingEvents = true;
                     _jellyfinProcess.Exited += JellyfinExited;
                     continue;
@@ -130,8 +133,18 @@ public class TrayApplicationContext : ApplicationContext
 
     private void JellyfinExited(object sender, EventArgs e)
     {
+        bool restartJf = false;
+
         if (_jellyfinProcess is not null)
         {
+            if (!_skipCrashRestart && _jellyfinProcess.ExitCode != 0)
+            {
+                if ((_jellyfinProcess.ExitTime - _jellyfinStartTime).TotalMinutes >= 1)
+                {
+                    restartJf = true;
+                }
+            }
+
             _jellyfinProcess.Dispose();
             _jellyfinProcess = null;
         }
@@ -139,6 +152,11 @@ public class TrayApplicationContext : ApplicationContext
         if (_shutdownBlocker is not null)
         {
             _shutdownBlocker.Block = false;
+        }
+
+        if (restartJf)
+        {
+            Start(null, null);
         }
     }
 
@@ -300,6 +318,8 @@ public class TrayApplicationContext : ApplicationContext
             if (p.Start())
             {
                 _jellyfinProcess = p;
+                _skipCrashRestart = false;
+                _jellyfinStartTime = p.StartTime;
                 if (_shutdownBlocker is not null)
                 {
                     _shutdownBlocker.Block = true;
@@ -321,6 +341,8 @@ public class TrayApplicationContext : ApplicationContext
         }
         else if (_jellyfinProcess is not null)
         {
+            _skipCrashRestart = true;
+
             ConsoleHelpers.SetConsoleCtrlHandler(IntPtr.Zero, true);
             if (ConsoleHelpers.AttachConsole((uint)_jellyfinProcess.Id))
             {
@@ -346,6 +368,7 @@ public class TrayApplicationContext : ApplicationContext
                         return;
                     }
 
+                    _skipCrashRestart = true;
                     try
                     {
                         state.Kill();
