@@ -313,6 +313,7 @@ public class TrayApplicationContext : ApplicationContext
                 p.StartInfo.RedirectStandardError = true;
             }
             p.StartInfo.Arguments = "--datadir \"" + _dataFolder + "\"";
+            p.StartInfo.EnvironmentVariables["CLINK_NOAUTORUN"] = "1";
             p.EnableRaisingEvents = true;
             p.Exited += JellyfinExited;
             if (p.Start())

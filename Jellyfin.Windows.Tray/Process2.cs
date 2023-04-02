@@ -5,6 +5,7 @@
 // 'Cause System.Diagnostics.Process lets you do everything except for redirecting stdout etc. to NUL. Faark me.
 
 using System;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
@@ -34,6 +35,7 @@ internal static class NativeMethods
     public const int ERROR_EXE_MACHINE_TYPE_MISMATCH = 216;
 
     public const int CREATE_NO_WINDOW = 0x08000000;
+    public const int CREATE_UNICODE_ENVIRONMENT = 0x00000400;
 
     public static readonly IntPtr INVALID_HANDLE_VALUE = new(-1);
 
@@ -312,6 +314,7 @@ internal sealed class Process2 : Process
         SafeProcessHandle procSH = null;
         var threadSH = new SafeThreadHandle();
         var errorCode = 0;
+        GCHandle environmentHandle = new GCHandle();
         SafeProcThreadAttributeList attributeList = null;
         SafeFileHandle[] inheritableHandles = null;
         IntPtr[] inheritableHandlesMarshallable;
@@ -359,7 +362,7 @@ internal sealed class Process2 : Process
                     //GC.KeepAlive(inheritableHandlesMarshallable);
                     attributeList.UpdateHandleList(inheritableHandlesMarshallable);
                     startupInfo.lpAttributeList = attributeList;
-                    creationFlags = SafeProcThreadAttributeList.EXTENDED_STARTUPINFO_PRESENT;
+                    creationFlags |= SafeProcThreadAttributeList.EXTENDED_STARTUPINFO_PRESENT;
                 }
 
                 if (startInfo.CreateNoWindow)
@@ -368,9 +371,13 @@ internal sealed class Process2 : Process
                 }
 
                 var environmentPtr = (IntPtr)0;
-                if (typeof(ProcessStartInfo).GetField("environmentVariables", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(startInfo) != null)
-                {
-                    throw new NotSupportedException("startInfo.environmentVariables != null");
+                if (typeof(ProcessStartInfo).GetField("environmentVariables", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(startInfo) is StringDictionary environmentVariables) {
+                    creationFlags |= NativeMethods.CREATE_UNICODE_ENVIRONMENT;
+
+                    var environmentBlockToByteArray = typeof(Process).Assembly.GetType("System.Diagnostics.EnvironmentBlock").GetMethod("ToByteArray", BindingFlags.Static | BindingFlags.Public);
+                    var environmentBytes = (byte[])environmentBlockToByteArray.Invoke(null, new object[] { environmentVariables, true });
+                    environmentHandle = GCHandle.Alloc(environmentBytes, GCHandleType.Pinned);
+                    environmentPtr = environmentHandle.AddrOfPinnedObject();
                 }
 
                 var workingDirectory = startInfo.WorkingDirectory;
@@ -431,6 +438,10 @@ internal sealed class Process2 : Process
             }
             finally
             {
+                if (environmentHandle.IsAllocated) {
+                    environmentHandle.Free();
+                }
+
                 startupInfo.Dispose();
 
                 if (attributeList != null && !attributeList.IsInvalid)
