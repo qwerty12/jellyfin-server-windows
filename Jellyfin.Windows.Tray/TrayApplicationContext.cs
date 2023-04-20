@@ -26,6 +26,7 @@ public class TrayApplicationContext : ApplicationContext
     private string _configFile;
     private string _networkFile;
     private string _port;
+    private string _baseUrl;
     private bool _firstRunDone = false;
     private string _networkAddress;
     private string _executableFile;
@@ -220,6 +221,7 @@ public class TrayApplicationContext : ApplicationContext
 
             _networkAddress = networkReader.SelectSingleNode("/NetworkConfiguration/LocalNetworkAddresses").Value;
             _port = networkReader.SelectSingleNode("/NetworkConfiguration/HttpServerPortNumber")?.Value;
+            _baseUrl = networkReader.SelectSingleNode("/NetworkConfiguration/BaseUrl")?.Value;
         }
 
         if (string.IsNullOrEmpty(_port))
@@ -232,7 +234,12 @@ public class TrayApplicationContext : ApplicationContext
             _networkAddress = "127.0.0.1";
         }
 
-        _localJellyfinUrl = "http://" + _networkAddress + ":" + _port + "/web/index.html";
+        if (string.IsNullOrEmpty(_baseUrl))
+        {
+            _baseUrl = string.Empty;
+        }
+
+        _localJellyfinUrl = "http://" + _networkAddress + ":" + _port + _baseUrl + "/web/index.html";
     }
 
     private bool CheckShowServiceNotElevatedWarning()
