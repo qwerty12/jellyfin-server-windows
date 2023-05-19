@@ -140,9 +140,16 @@ public class TrayApplicationContext : ApplicationContext
         {
             if (!_skipCrashRestart && _jellyfinProcess.ExitCode != 0)
             {
-                if ((_jellyfinProcess.ExitTime - _jellyfinStartTime).TotalMinutes >= 1)
+                var totalProcessTime = _jellyfinProcess.ExitTime - _jellyfinStartTime;
+                if (totalProcessTime.TotalMinutes >= 1)
                 {
                     restartJf = true;
+                }
+                else if (totalProcessTime.TotalSeconds is >= 15 and <= 17)
+                {
+                    MessageBox.Show("Could not start Jellyfin server process after the specified wait period." +
+                                    "\r\n You can find the Server Logs at: " +
+                                    $"\r\n {_dataFolder + "\\log"}");
                 }
             }
 
@@ -305,29 +312,55 @@ public class TrayApplicationContext : ApplicationContext
             }
 
             _serviceController.Start();
+
+            Task.Delay(TimeSpan.FromSeconds(15)).ContinueWith((_) =>
+            {
+                _serviceController.Refresh();
+                if (_serviceController.Status == ServiceControllerStatus.Stopped)
+                {
+                    MessageBox.Show($"Could not start Jellyfin server service after the specified wait period." +
+                                    $"\r\n You can find the Server Logs at: " +
+                                    $"\r\n {_dataFolder + "\\log"}");
+                }
+            });
         }
         else if (_jellyfinProcess is null)
         {
+            Process2 jellyfinServerProcess = null;
+            bool processStarted = false;
             ConsoleHelpers.SetConsoleCtrlHandler(IntPtr.Zero, false); // make sure IGNORE_CTRL_C is not set in this process to stop it from being inherited by the below
-            var p = new Process2();
-            p.StartInfo.FileName = _executableFile;
-            p.StartInfo.WorkingDirectory = _installFolder;
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.CreateNoWindow = true;
-            if (p.StartInfo.CreateNoWindow)
+            try
             {
-                p.StartInfo.RedirectStandardOutput = true;
-                p.StartInfo.RedirectStandardError = true;
+                jellyfinServerProcess = new Process2();
+                jellyfinServerProcess.StartInfo.FileName = _executableFile;
+                jellyfinServerProcess.StartInfo.WorkingDirectory = _installFolder;
+                jellyfinServerProcess.StartInfo.UseShellExecute = false;
+                jellyfinServerProcess.StartInfo.CreateNoWindow = true;
+                if (jellyfinServerProcess.StartInfo.CreateNoWindow)
+                {
+                    jellyfinServerProcess.StartInfo.RedirectStandardOutput = true;
+                    jellyfinServerProcess.StartInfo.RedirectStandardError = true;
+                }
+                jellyfinServerProcess.StartInfo.Arguments = "--datadir \"" + _dataFolder + "\"";
+                jellyfinServerProcess.StartInfo.EnvironmentVariables["CLINK_NOAUTORUN"] = "1";
+                jellyfinServerProcess.EnableRaisingEvents = true;
+                jellyfinServerProcess.Exited += JellyfinExited;
+                processStarted = jellyfinServerProcess.Start();
             }
-            p.StartInfo.Arguments = "--datadir \"" + _dataFolder + "\"";
-            p.StartInfo.EnvironmentVariables["CLINK_NOAUTORUN"] = "1";
-            p.EnableRaisingEvents = true;
-            p.Exited += JellyfinExited;
-            if (p.Start())
+            catch (Exception exception)
             {
-                _jellyfinProcess = p;
+                MessageBox.Show("Could not start Jellyfin Server. " +
+                                $"\r\n Because: '{exception.Message.Truncate(25)}'." +
+                                "You can find the Server Logs at: " +
+                                $"\r\n {_dataFolder + "\\log"}");
+                return;
+            }
+
+            if (processStarted)
+            {
+                _jellyfinProcess = jellyfinServerProcess;
                 _skipCrashRestart = false;
-                _jellyfinStartTime = p.StartTime;
+                _jellyfinStartTime = jellyfinServerProcess.StartTime;
                 if (_shutdownBlocker is not null)
                 {
                     _shutdownBlocker.Block = true;
