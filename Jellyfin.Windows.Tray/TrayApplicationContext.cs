@@ -375,6 +375,34 @@ public class TrayApplicationContext : ApplicationContext
                 ConsoleHelpers.GenerateConsoleCtrlEvent(ConsoleHelpers.HandlerRoutineCtrls.CTRL_C_EVENT, 0);
                 ConsoleHelpers.FreeConsole();
             }
+
+            if (sender == null && e == null)
+            {
+                return;
+            }
+
+            if (_jellyfinServerProcess.WaitForExit(100))
+            {
+                return;
+            }
+
+            Process state = _jellyfinServerProcess;
+            Task.Delay(10000).ContinueWith(_ =>
+                {
+                    if (_jellyfinServerProcess == null || _jellyfinServerProcess != state)
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        state.Kill();
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                });
         }
     }
 
