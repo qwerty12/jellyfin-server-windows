@@ -290,7 +290,7 @@ public class TrayApplicationContext : ApplicationContext
             return;
         }
 
-        Process jellyfinServerProcess = null;
+        Process2 jellyfinServerProcess = null;
         if (_runType == RunType.Service)
         {
             _serviceController.Start();
@@ -300,10 +300,16 @@ public class TrayApplicationContext : ApplicationContext
             try
             {
                 ConsoleHelpers.SetConsoleCtrlHandler(IntPtr.Zero, false); // make sure IGNORE_CTRL_C is not set in this process to stop it from being inherited by the below
-                jellyfinServerProcess = new Process();
+                jellyfinServerProcess = new Process2();
                 jellyfinServerProcess.StartInfo.FileName = _executableFile;
                 jellyfinServerProcess.StartInfo.WorkingDirectory = _installFolder;
+                jellyfinServerProcess.StartInfo.UseShellExecute = false;
                 jellyfinServerProcess.StartInfo.CreateNoWindow = true;
+                if (jellyfinServerProcess.StartInfo.CreateNoWindow)
+                {
+                    jellyfinServerProcess.StartInfo.RedirectStandardOutput = true;
+                    jellyfinServerProcess.StartInfo.RedirectStandardError = true;
+                }
                 jellyfinServerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
                 jellyfinServerProcess.StartInfo.Arguments = "--datadir \"" + _dataFolder + "\"";
                 jellyfinServerProcess.EnableRaisingEvents = true;
