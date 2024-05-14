@@ -34,6 +34,8 @@ public class TrayApplicationContext : ApplicationContext
     private string _localJellyfinUrl = "http://localhost:8096/web/index.html";
     private NotifyIcon _trayIcon;
     private ServiceController _serviceController;
+    private Process _jellyfinServerProcess;
+    private DateTime _jellyfinServerStartTime;
     private ToolStripMenuItem _menuItemAutostart;
     private ToolStripMenuItem _menuItemStart;
     private ToolStripMenuItem _menuItemStop;
@@ -113,24 +115,47 @@ public class TrayApplicationContext : ApplicationContext
         if (_runType == RunType.Executable)
         {
             // check if Jellyfin is already running, if not, start it
-            bool jellyfinFound = false;
             foreach (Process p in Process.GetProcessesByName("jellyfin"))
             {
-                if (!jellyfinFound && p.MainModule?.FileName.Equals(_executableFile, StringComparison.Ordinal) == true)
+                if (_jellyfinServerProcess is null && p.MainModule?.FileName.Equals(_executableFile, StringComparison.Ordinal) == true)
                 {
-                    jellyfinFound = true;
+                    _jellyfinServerProcess = p;
+                    _jellyfinServerStartTime = p.StartTime;
+                    _jellyfinServerProcess.EnableRaisingEvents = true;
+                    _jellyfinServerProcess.Exited += JellyfinExited;
+                    continue;
                 }
 
                 p.Dispose();
             }
 
-            if (!jellyfinFound)
+            if (_jellyfinServerProcess is null)
             {
                 Start(null, null);
             }
         }
 
         return true;
+    }
+
+    private void JellyfinExited(object sender, EventArgs e)
+    {
+        if (_jellyfinServerProcess is not null)
+        {
+            if (_jellyfinServerProcess.ExitCode != 0)
+            {
+                var totalProcessTime = _jellyfinServerProcess.ExitTime - _jellyfinServerStartTime;
+                if (totalProcessTime.TotalSeconds is >= 15 and <= 17)
+                {
+                    MessageBox.Show("Could not start Jellyfin server process after the specified wait period." +
+                                    "\r\n You can find the Server Logs at: " +
+                                    $"\r\n {_dataFolder + "\\log"}");
+                }
+            }
+
+            _jellyfinServerProcess.Dispose();
+            _jellyfinServerProcess = null;
+        }
     }
 
     private void CreateTrayIcon()
@@ -247,7 +272,7 @@ public class TrayApplicationContext : ApplicationContext
         }
         else
         {
-            exeRunning = Process.GetProcessesByName("jellyfin").Length > 0;
+            exeRunning = _jellyfinServerProcess is not null;
         }
 
         bool running = (!runningAsService && exeRunning) || (runningAsService && _serviceController.Status == ServiceControllerStatus.Running);
@@ -270,7 +295,7 @@ public class TrayApplicationContext : ApplicationContext
         {
             _serviceController.Start();
         }
-        else
+        else if (_jellyfinServerProcess is null)
         {
             try
             {
@@ -280,7 +305,14 @@ public class TrayApplicationContext : ApplicationContext
                 jellyfinServerProcess.StartInfo.CreateNoWindow = true;
                 jellyfinServerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
                 jellyfinServerProcess.StartInfo.Arguments = "--datadir \"" + _dataFolder + "\"";
-                jellyfinServerProcess.Start();
+                jellyfinServerProcess.EnableRaisingEvents = true;
+                jellyfinServerProcess.Exited += JellyfinExited;
+                if (jellyfinServerProcess.Start())
+                {
+                    _jellyfinServerProcess = jellyfinServerProcess;
+                    _jellyfinServerStartTime = jellyfinServerProcess.StartTime;
+                }
+                return; // XXX: skip Task.Delay below
             }
             catch (Exception exception)
             {
@@ -328,17 +360,11 @@ public class TrayApplicationContext : ApplicationContext
         {
             _serviceController.Stop();
         }
-        else
+        else if (_jellyfinServerProcess is not null)
         {
-            Process process = Process.GetProcessesByName("jellyfin").FirstOrDefault();
-            if (process == null)
+            if (!_jellyfinServerProcess.CloseMainWindow())
             {
-                return;
-            }
-
-            if (!process.CloseMainWindow())
-            {
-                process.Kill();
+                _jellyfinServerProcess.Kill();
             }
         }
     }
