@@ -339,6 +339,7 @@ public class TrayApplicationContext : ApplicationContext
                 }
                 jellyfinServerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
                 jellyfinServerProcess.StartInfo.Arguments = "--datadir \"" + _dataFolder + "\"";
+                jellyfinServerProcess.StartInfo.EnvironmentVariables["CLINK_NOAUTORUN"] = "1";
                 jellyfinServerProcess.EnableRaisingEvents = true;
                 jellyfinServerProcess.Exited += JellyfinExited;
                 if (jellyfinServerProcess.Start())
