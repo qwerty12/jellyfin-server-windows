@@ -299,6 +299,7 @@ public class TrayApplicationContext : ApplicationContext
         {
             try
             {
+                ConsoleHelpers.SetConsoleCtrlHandler(IntPtr.Zero, false); // make sure IGNORE_CTRL_C is not set in this process to stop it from being inherited by the below
                 jellyfinServerProcess = new Process();
                 jellyfinServerProcess.StartInfo.FileName = _executableFile;
                 jellyfinServerProcess.StartInfo.WorkingDirectory = _installFolder;
@@ -362,9 +363,11 @@ public class TrayApplicationContext : ApplicationContext
         }
         else if (_jellyfinServerProcess is not null)
         {
-            if (!_jellyfinServerProcess.CloseMainWindow())
+            ConsoleHelpers.SetConsoleCtrlHandler(IntPtr.Zero, true);
+            if (ConsoleHelpers.AttachConsole((uint)_jellyfinServerProcess.Id))
             {
-                _jellyfinServerProcess.Kill();
+                ConsoleHelpers.GenerateConsoleCtrlEvent(ConsoleHelpers.HandlerRoutineCtrls.CTRL_C_EVENT, 0);
+                ConsoleHelpers.FreeConsole();
             }
         }
     }
