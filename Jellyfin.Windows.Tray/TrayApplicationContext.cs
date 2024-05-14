@@ -37,6 +37,7 @@ public class TrayApplicationContext : ApplicationContext
     private Process _jellyfinServerProcess;
     private DateTime _jellyfinServerStartTime;
     private ShutdownBlocker _shutdownBlocker;
+    private bool _skipCrashRestart;
     private ToolStripMenuItem _menuItemAutostart;
     private ToolStripMenuItem _menuItemStart;
     private ToolStripMenuItem _menuItemStop;
@@ -141,12 +142,18 @@ public class TrayApplicationContext : ApplicationContext
 
     private void JellyfinExited(object sender, EventArgs e)
     {
+        bool restartJf = false;
+
         if (_jellyfinServerProcess is not null)
         {
-            if (_jellyfinServerProcess.ExitCode != 0)
+            if (!_skipCrashRestart && _jellyfinServerProcess.ExitCode != 0)
             {
                 var totalProcessTime = _jellyfinServerProcess.ExitTime - _jellyfinServerStartTime;
-                if (totalProcessTime.TotalSeconds is >= 15 and <= 17)
+                if (totalProcessTime.TotalMinutes >= 1)
+                {
+                    restartJf = true;
+                }
+                else if (totalProcessTime.TotalSeconds is >= 15 and <= 17)
                 {
                     MessageBox.Show("Could not start Jellyfin server process after the specified wait period." +
                                     "\r\n You can find the Server Logs at: " +
@@ -161,6 +168,11 @@ public class TrayApplicationContext : ApplicationContext
         if (_shutdownBlocker is not null)
         {
             _shutdownBlocker.Block = false;
+        }
+
+        if (restartJf)
+        {
+            Start(null, null);
         }
     }
 
@@ -332,6 +344,7 @@ public class TrayApplicationContext : ApplicationContext
                 if (jellyfinServerProcess.Start())
                 {
                     _jellyfinServerProcess = jellyfinServerProcess;
+                    _skipCrashRestart = false;
                     _jellyfinServerStartTime = jellyfinServerProcess.StartTime;
                     try
                     {
@@ -395,6 +408,7 @@ public class TrayApplicationContext : ApplicationContext
         }
         else if (_jellyfinServerProcess is not null)
         {
+            _skipCrashRestart = true;
             ConsoleHelpers.SetConsoleCtrlHandler(IntPtr.Zero, true);
             if (ConsoleHelpers.AttachConsole((uint)_jellyfinServerProcess.Id))
             {
@@ -420,6 +434,7 @@ public class TrayApplicationContext : ApplicationContext
                         return;
                     }
 
+                    _skipCrashRestart = true;
                     try
                     {
                         state.Kill();
