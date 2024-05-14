@@ -265,6 +265,7 @@ public class TrayApplicationContext : ApplicationContext
             {
                 jellyfinServerProcess = new Process();
                 jellyfinServerProcess.StartInfo.FileName = _executableFile;
+                jellyfinServerProcess.StartInfo.WorkingDirectory = _installFolder;
                 jellyfinServerProcess.StartInfo.CreateNoWindow = true;
                 jellyfinServerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
                 jellyfinServerProcess.StartInfo.Arguments = "--datadir \"" + _dataFolder + "\"";
