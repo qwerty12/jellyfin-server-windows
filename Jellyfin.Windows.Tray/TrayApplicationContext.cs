@@ -338,7 +338,7 @@ public class TrayApplicationContext : ApplicationContext
                     jellyfinServerProcess.StartInfo.RedirectStandardError = true;
                 }
                 jellyfinServerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                jellyfinServerProcess.StartInfo.Arguments = "--datadir \"" + _dataFolder + "\"";
+                jellyfinServerProcess.StartInfo.Arguments = "--datadir \"" + _dataFolder + "\" --ffmpeg \"C:\\ProgramData\\scoop\\apps\\jellyfin-ffmpeg\\current\\ffmpeg.exe\"";
                 jellyfinServerProcess.StartInfo.EnvironmentVariables["CLINK_NOAUTORUN"] = "1";
                 jellyfinServerProcess.EnableRaisingEvents = true;
                 jellyfinServerProcess.Exited += JellyfinExited;
