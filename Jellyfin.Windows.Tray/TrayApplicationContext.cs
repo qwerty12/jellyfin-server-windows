@@ -36,6 +36,7 @@ public class TrayApplicationContext : ApplicationContext
     private ServiceController _serviceController;
     private Process _jellyfinServerProcess;
     private DateTime _jellyfinServerStartTime;
+    private ShutdownBlocker _shutdownBlocker;
     private ToolStripMenuItem _menuItemAutostart;
     private ToolStripMenuItem _menuItemStart;
     private ToolStripMenuItem _menuItemStop;
@@ -156,6 +157,11 @@ public class TrayApplicationContext : ApplicationContext
             _jellyfinServerProcess.Dispose();
             _jellyfinServerProcess = null;
         }
+
+        if (_shutdownBlocker is not null)
+        {
+            _shutdownBlocker.Block = false;
+        }
     }
 
     private void CreateTrayIcon()
@@ -183,6 +189,15 @@ public class TrayApplicationContext : ApplicationContext
         using var iconStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(TrayIconResourceName);
         _trayIcon = new NotifyIcon() { Icon = new Icon(iconStream), ContextMenuStrip = contextMenu, Visible = true, Text = "Jellyfin" };
         _trayIcon.DoubleClick += Open;
+
+        if (_runType == RunType.Executable)
+        {
+            _shutdownBlocker = new ShutdownBlocker(_trayIcon, () =>
+            {
+                Stop(null, null);
+                _jellyfinServerProcess.WaitForExit(10000);
+            }) { BlockMsg = "Waiting for Jellyfin to shutdown" };
+        }
     }
 
     private void LoadJellyfinConfig()
@@ -318,6 +333,17 @@ public class TrayApplicationContext : ApplicationContext
                 {
                     _jellyfinServerProcess = jellyfinServerProcess;
                     _jellyfinServerStartTime = jellyfinServerProcess.StartTime;
+                    try
+                    {
+                        if (_shutdownBlocker is not null)
+                        {
+                            _shutdownBlocker.Block = true;
+                        }
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
                 }
                 return; // XXX: skip Task.Delay below
             }
