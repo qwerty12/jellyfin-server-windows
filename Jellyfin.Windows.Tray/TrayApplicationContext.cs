@@ -234,7 +234,7 @@ public class TrayApplicationContext : ApplicationContext
             XDocument networkXml = XDocument.Load(_networkFile);
             XPathNavigator networkReader = networkXml.CreateNavigator();
 
-            _networkAddress = networkReader.SelectSingleNode("/NetworkConfiguration/LocalNetworkAddresses").Value;
+            _networkAddress = networkReader.SelectSingleNode("/NetworkConfiguration/LocalNetworkAddresses/string[1]")?.Value;
             _port = networkReader.SelectSingleNode("/NetworkConfiguration/InternalHttpPort")?.Value;
             _baseUrl = networkReader.SelectSingleNode("/NetworkConfiguration/BaseUrl")?.Value;
         }
