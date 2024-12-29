@@ -340,6 +340,7 @@ public class TrayApplicationContext : ApplicationContext
                 jellyfinServerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
                 jellyfinServerProcess.StartInfo.Arguments = "--datadir \"" + _dataFolder + "\" --ffmpeg \"C:\\ProgramData\\scoop\\apps\\jellyfin-ffmpeg\\current\\ffmpeg.exe\"";
                 jellyfinServerProcess.StartInfo.EnvironmentVariables["CLINK_NOAUTORUN"] = "1";
+                jellyfinServerProcess.StartInfo.EnvironmentVariables["DOTNET_GCConserveMemory"] = "1"; // can also try [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\jellyfin.exe] "FrontEndHeapDebugOptions"=dword:00000008
                 jellyfinServerProcess.EnableRaisingEvents = true;
                 jellyfinServerProcess.Exited += JellyfinExited;
                 if (jellyfinServerProcess.Start())
